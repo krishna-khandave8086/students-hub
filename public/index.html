@@ -57,8 +57,9 @@
             </div>
         </div>
 
-        <div style="text-align:right;margin-top:30px">
-            <button class="btn-secondary" style="width:auto;padding:10px 24px;margin-right:10px" onclick="showPage('profile-page')">👤 My Profile</button>
+        <div style="text-align:right;margin-top:30px;display:flex;justify-content:flex-end;gap:10px;">
+            <button class="btn-secondary hidden" id="admin-btn" style="width:auto;padding:10px 24px;color:#ef4444;border-color:#ef4444;" onclick="showPage('admin-page')">⚙️ Admin Panel</button>
+            <button class="btn-secondary" style="width:auto;padding:10px 24px;" onclick="showPage('profile-page')">👤 My Profile</button>
             <button class="btn-secondary" style="width:auto;padding:10px 24px" onclick="logout()">Sign Out</button>
         </div>
     </div>
@@ -213,6 +214,31 @@
             </div>
         </div>
         <button class="btn-secondary" style="margin-top:25px" onclick="showPage('dashboard-page')">← Back to Portal Home</button>
+    </div>
+
+    <!-- ===== ADMIN PAGE ===== -->
+    <div id="admin-page" class="card wide hidden">
+        <div class="dash-header">
+            <div>
+                <h2 style="color:var(--danger)">⚙️ Admin Control Panel</h2>
+                <p>Master Admin Access: Manage users and moderate content.</p>
+            </div>
+            <div class="user-avatar" style="background:#fef2f2;border-color:#fecaca;">👑</div>
+        </div>
+
+        <div style="margin-bottom:20px;display:flex;gap:10px;">
+            <button onclick="loadAdminUsers()" style="width:auto">👥 Manage Users</button>
+            <button class="btn-secondary" onclick="loadAdminPosts()" style="width:auto">🚨 Moderate Posts</button>
+        </div>
+
+        <hr class="section-divider">
+
+        <div id="admin-content-area" class="items-grid" style="grid-template-columns: 1fr;">
+            <!-- Admin content loads here -->
+            <div class="empty-state"><p>Select a tab above to manage the platform.</p></div>
+        </div>
+
+        <button class="btn-secondary" style="margin-top:25px" onclick="showPage('dashboard-page')">← Exit Admin Panel</button>
     </div>
 
 </div>

@@ -8,7 +8,7 @@ let currentUser = null;
 let currentChatUser = null;
 let chatPollInterval = null;
 
-const API = '';
+const ADMIN_EMAIL = 'krishnakant.khandave_comp25@pccoer.in';
 
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', () => {
@@ -42,7 +42,7 @@ function showToast(message, type = 'info') {
 
 // ===== PAGE NAV =====
 function showPage(pageId) {
-  ['login-page','dashboard-page','lost-found-page','buy-sell-page','profile-page','chat-page'].forEach(id => {
+  ['login-page','dashboard-page','lost-found-page','buy-sell-page','profile-page','chat-page','admin-page'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
   const page = document.getElementById(pageId);
@@ -104,6 +104,9 @@ async function handleAuth(event) {
     localStorage.setItem('studentId', currentStudentId);
 
     document.getElementById('welcome-msg').innerText = `Welcome, ${formatName(currentUser)}`;
+    if (currentStudentId === ADMIN_EMAIL) {
+      document.getElementById('admin-btn').classList.remove('hidden');
+    }
     showPage('dashboard-page');
     showToast(data.message, 'success');
   } catch (err) {
@@ -118,6 +121,8 @@ function logout() {
   authToken = null;
   currentUser = null;
   currentStudentId = null;
+  currentChatUser = null;
+  document.getElementById('admin-btn').classList.add('hidden');
   localStorage.removeItem('authToken');
   localStorage.removeItem('studentId');
   document.getElementById('college-id').value = '';
@@ -521,6 +526,96 @@ async function handleSendMessage(event) {
     // We don't need to refetch immediately because polling handles it
   } catch (err) {
     showToast('Failed to send message.', 'error');
+  }
+}
+
+// ===== ADMIN PANEL =====
+async function loadAdminUsers() {
+  const container = document.getElementById('admin-content-area');
+  container.innerHTML = '<div class="empty-state"><div class="spinner"></div><p>Loading users...</p></div>';
+
+  try {
+    const res = await fetch(`${API}/api/admin/users`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+    if (!res.ok) throw new Error('Failed to load users');
+    const users = await res.json();
+
+    container.innerHTML = users.map(u => `
+      <div class="item-card" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h4 style="margin:0">${u.student_id}</h4>
+          <p class="timestamp" style="margin:0">Joined: ${new Date(u.created_at).toLocaleDateString()}</p>
+        </div>
+        ${u.student_id !== ADMIN_EMAIL ? `<button type="button" class="btn-danger" style="margin:0" onclick="adminDeleteUser('${u.student_id}')">🗑️ Delete Account</button>` : '<span class="badge badge-success">Admin</span>'}
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+  }
+}
+
+async function adminDeleteUser(email) {
+  if (!confirm(`Are you sure you want to permanently delete user ${email}?`)) return;
+  try {
+    const res = await fetch(`${API}/api/admin/users/${email}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (!res.ok) throw new Error('Failed to delete user');
+    showToast(`User ${email} deleted.`, 'success');
+    loadAdminUsers();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function loadAdminPosts() {
+  const container = document.getElementById('admin-content-area');
+  container.innerHTML = '<div class="empty-state"><div class="spinner"></div><p>Loading posts...</p></div>';
+
+  try {
+    const [lfRes, mpRes] = await Promise.all([
+      fetch(`${API}/api/lost-found`),
+      fetch(`${API}/api/marketplace`)
+    ]);
+    const lfData = await lfRes.json();
+    const mpData = await mpRes.json();
+
+    const allPosts = [];
+    lfData.forEach(p => allPosts.push({ ...p, source: 'lost-found' }));
+    mpData.forEach(p => allPosts.push({ ...p, source: 'marketplace' }));
+    allPosts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    container.innerHTML = allPosts.map(p => {
+      const typeLabel = p.source === 'lost-found' ? `LF: ${p.type}` : `MP: ${p.type}`;
+      const title = p.source === 'lost-found' ? p.item_name : p.product_name;
+      return `
+        <div class="item-card" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <span class="badge ${p.source === 'lost-found' ? 'badge-lost' : 'badge-selling'}">${typeLabel}</span>
+            <h4 style="margin:10px 0 0 0">${esc(title)}</h4>
+            <p class="timestamp" style="margin:0">by ${p.user_id}</p>
+          </div>
+          <button type="button" class="btn-danger" style="margin:0" onclick="adminDeletePost('${p.source}', ${p.id})">🚨 Force Delete</button>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+  }
+}
+
+async function adminDeletePost(source, id) {
+  if (!confirm(`Are you sure you want to FORCE DELETE this post?`)) return;
+  try {
+    const res = await fetch(`${API}/api/admin/posts/${source}/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (!res.ok) throw new Error('Failed to delete post');
+    showToast(`Post deleted.`, 'success');
+    loadAdminPosts();
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 }
 
