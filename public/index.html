@@ -50,11 +50,6 @@
                 <h3>Buy & Sell</h3>
                 <p>Find affordable textbooks, drafting tools, and campus gear from seniors.</p>
             </div>
-            <div class="feature-box" onclick="showPage('chat-page')" style="grid-column: 1 / -1; max-width: 50%; margin: 0 auto; width: 100%;">
-                <div class="feature-icon">💬</div>
-                <h3>Messages</h3>
-                <p>Chat with students about items you want to buy or claim.</p>
-            </div>
         </div>
 
         <div style="text-align:right;margin-top:30px;display:flex;justify-content:flex-end;gap:10px;">
@@ -171,6 +166,12 @@
         </div>
 
         <div class="grid">
+            <div class="feature-box" onclick="showPage('chat-page')" style="display:flex; flex-direction:column; justify-content:center; cursor:pointer;">
+                <div class="feature-icon">💬</div>
+                <h3>My Messages</h3>
+                <p>View your active conversations with other students.</p>
+            </div>
+
             <div class="form-container">
                 <h3 style="margin-top:0">Change Password</h3>
                 <form id="password-form" onsubmit="handleChangePassword(event)">
