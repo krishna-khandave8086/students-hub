@@ -1,25 +1,13 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const db = require('../db');
+const supabase = require('../supabase');
 const { authenticateToken } = require('../middleware/auth');
+const path = require('path');
 
 const router = express.Router();
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '..', 'uploads');
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `lf_${Date.now()}_${Math.round(Math.random() * 1000)}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  }
-});
-
+// Use memory storage for multer since we upload directly to Supabase
+const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
@@ -33,50 +21,112 @@ const upload = multer({
 });
 
 // GET /api/lost-found — Fetch all posts
-router.get('/', (req, res) => {
-  const posts = db.prepare('SELECT * FROM lost_found ORDER BY created_at DESC').all();
-  res.json(posts);
+router.get('/', async (req, res) => {
+  try {
+    const { data: posts, error } = await supabase
+      .from('lost_found')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(posts);
+  } catch (err) {
+    console.error('Fetch LF Error:', err);
+    res.status(500).json({ error: 'Failed to fetch posts.' });
+  }
 });
 
 // POST /api/lost-found — Create new post (auth required)
-router.post('/', authenticateToken, upload.single('image'), (req, res) => {
+router.post('/', authenticateToken, upload.single('image'), async (req, res) => {
   const { type, item_name, location, details } = req.body;
 
   if (!type || !item_name || !location || !details) {
     return res.status(400).json({ error: 'All fields are required.' });
   }
 
-  const image_path = req.file ? `/uploads/${req.file.filename}` : null;
+  let image_path = null;
 
-  const stmt = db.prepare(
-    'INSERT INTO lost_found (user_id, type, item_name, location, details, image_path) VALUES (?, ?, ?, ?, ?, ?)'
-  );
-  const result = stmt.run(req.user.student_id, type, item_name, location, details, image_path);
+  try {
+    if (req.file) {
+      // Upload to Supabase Storage
+      const fileExt = req.file.originalname.split('.').pop();
+      const fileName = `lf_${Date.now()}_${Math.round(Math.random() * 1000)}.${fileExt}`;
+      
+      const { data, error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype
+        });
 
-  const newPost = db.prepare('SELECT * FROM lost_found WHERE id = ?').get(result.lastInsertRowid);
-  res.status(201).json(newPost);
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('images')
+        .getPublicUrl(fileName);
+        
+      image_path = publicUrl;
+    }
+
+    const { data: newPost, error } = await supabase
+      .from('lost_found')
+      .insert([{
+        user_id: req.user.student_id,
+        type,
+        item_name,
+        location,
+        details,
+        image_path
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(newPost);
+  } catch (err) {
+    console.error('Create LF Error:', err);
+    res.status(500).json({ error: 'Failed to create post.' });
+  }
 });
 
 // DELETE /api/lost-found/:id — Delete own post (auth required)
-router.delete('/:id', authenticateToken, (req, res) => {
-  const post = db.prepare('SELECT * FROM lost_found WHERE id = ?').get(req.params.id);
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    // Check if post exists and belongs to user
+    const { data: post, error: fetchError } = await supabase
+      .from('lost_found')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
 
-  if (!post) {
-    return res.status(404).json({ error: 'Post not found.' });
+    if (fetchError || !post) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+
+    if (post.user_id !== req.user.student_id) {
+      return res.status(403).json({ error: 'You can only delete your own posts.' });
+    }
+
+    // Delete image from storage if it exists
+    if (post.image_path) {
+      // Extract filename from the URL (the last part of the path)
+      const fileName = post.image_path.split('/').pop();
+      await supabase.storage.from('images').remove([fileName]);
+    }
+
+    // Delete from DB
+    const { error: deleteError } = await supabase
+      .from('lost_found')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (deleteError) throw deleteError;
+
+    res.json({ message: 'Post deleted successfully.' });
+  } catch (err) {
+    console.error('Delete LF Error:', err);
+    res.status(500).json({ error: 'Failed to delete post.' });
   }
-
-  if (post.user_id !== req.user.student_id) {
-    return res.status(403).json({ error: 'You can only delete your own posts.' });
-  }
-
-  // Delete the image file if it exists
-  if (post.image_path) {
-    const imgPath = path.join(__dirname, '..', post.image_path);
-    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-  }
-
-  db.prepare('DELETE FROM lost_found WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Post deleted successfully.' });
 });
 
 module.exports = router;

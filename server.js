@@ -3,12 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-// Initialize database (creates tables if not exist)
-require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,9 +13,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -45,7 +38,7 @@ app.listen(PORT, () => {
   console.log(`\n  🏛️  Students Hub Server`);
   console.log(`  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`  🌐 Running at: http://localhost:${PORT}`);
-  console.log(`  📁 Database:   students_hub.db`);
-  console.log(`  📸 Uploads:    /uploads/`);
+  console.log(`  ☁️ Database:   Supabase (PostgreSQL)`);
+  console.log(`  ☁️ Storage:    Supabase Cloud Storage`);
   console.log(`  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 });
