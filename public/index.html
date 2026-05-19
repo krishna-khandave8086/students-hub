@@ -34,7 +34,10 @@
             <div>
                 <h2 id="welcome-msg">Welcome back</h2>
             </div>
-            <div class="user-avatar">👨‍🎓</div>
+            <div style="display:flex; gap:15px; align-items:center;">
+                <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">🌙 Dark</button>
+                <div class="user-avatar">👨‍🎓</div>
+            </div>
         </div>
 
 
@@ -49,6 +52,11 @@
                 <div class="feature-icon">🛍️</div>
                 <h3>Buy & Sell</h3>
                 <p>Find affordable textbooks, drafting tools, and campus gear from seniors.</p>
+            </div>
+            <div class="feature-box" onclick="showPage('chat-page')" style="grid-column: 1 / -1; max-width: 50%; margin: 0 auto; width: 100%;">
+                <div class="feature-icon">💬</div>
+                <h3>Messages</h3>
+                <p>Chat with students about items you want to buy or claim.</p>
             </div>
         </div>
 
@@ -134,7 +142,6 @@
                     <option value="Not Applicable">Not Applicable</option>
                 </select>
                 <input type="text" placeholder="Asking Price / Budget (e.g., ₹200 or Negotiable)" required>
-                <input type="text" placeholder="Contact Info (e.g., Phone No, Email, Hostel Room)" required>
 
                 <label class="file-label">Provide a Photo of the Item (Optional):</label>
                 <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -162,7 +169,10 @@
                 <h2>My Profile</h2>
                 <p id="profile-email">email@pccoer.in</p>
             </div>
-            <div class="user-avatar">👤</div>
+            <div style="display:flex; gap:15px; align-items:center;">
+                <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn-profile">🌙 Dark</button>
+                <div class="user-avatar">👤</div>
+            </div>
         </div>
 
         <div class="grid">
@@ -186,6 +196,28 @@
             </div>
         </div>
 
+        <button class="btn-secondary" style="margin-top:25px" onclick="showPage('dashboard-page')">← Back to Portal Home</button>
+    </div>
+
+    <!-- ===== CHAT PAGE ===== -->
+    <div id="chat-page" class="card wide hidden">
+        <h2>💬 Messages</h2>
+        <div class="chat-container" style="margin-top:20px;">
+            <div class="chat-sidebar" id="chat-sidebar-list">
+                <!-- Contacts load here -->
+                <div style="padding:16px; color:var(--text-muted); font-size:14px; text-align:center;">No conversations yet.</div>
+            </div>
+            <div class="chat-main">
+                <div class="chat-header" id="chat-header">Select a conversation</div>
+                <div class="chat-messages" id="chat-messages">
+                    <div style="margin:auto; color:var(--text-muted); font-size:14px;">Your messages will appear here.</div>
+                </div>
+                <form class="chat-input-area" onsubmit="handleSendMessage(event)">
+                    <input type="text" id="chat-input" placeholder="Type a message..." required disabled autocomplete="off">
+                    <button type="submit" id="chat-send-btn" disabled>Send</button>
+                </form>
+            </div>
+        </div>
         <button class="btn-secondary" style="margin-top:25px" onclick="showPage('dashboard-page')">← Back to Portal Home</button>
     </div>
 

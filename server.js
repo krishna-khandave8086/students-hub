@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/lost-found', require('./routes/lostfound'));
 app.use('/api/marketplace', require('./routes/marketplace'));
+app.use('/api/messages', require('./routes/messages'));
 
 // Fallback to index.html for SPA
 app.get('/{*path}', (req, res) => {

@@ -55,9 +55,9 @@ router.get('/user', authenticateToken, async (req, res) => {
 
 // POST /api/marketplace — Create new listing (auth required)
 router.post('/', authenticateToken, upload.single('image'), async (req, res) => {
-  const { type, product_name, condition, price, contact } = req.body;
+  const { type, product_name, condition, price } = req.body;
 
-  if (!type || !product_name || !condition || !price || !contact) {
+  if (!type || !product_name || !condition || !price) {
     return res.status(400).json({ error: 'All fields are required.' });
   }
 
@@ -93,7 +93,6 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
         product_name,
         condition,
         price,
-        contact,
         image_path
       }])
       .select()

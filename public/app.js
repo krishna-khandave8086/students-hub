@@ -2,11 +2,22 @@
 let cameraStream = null;
 let capturedImageBlob = null;
 let activeCameraForm = 'lost';
-let currentUser = null;
 let authToken = localStorage.getItem('authToken');
 let currentStudentId = localStorage.getItem('studentId');
+let currentUser = null;
+let currentChatUser = null;
+let chatPollInterval = null;
 
 const API = '';
+
+// Initialize Theme
+if (localStorage.getItem('theme') === 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  setTimeout(() => {
+    const btns = document.querySelectorAll('.theme-toggle-btn');
+    btns.forEach(b => b.innerHTML = '☀️ Light');
+  }, 100);
+}
 
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', () => {
@@ -40,7 +51,7 @@ function showToast(message, type = 'info') {
 
 // ===== PAGE NAV =====
 function showPage(pageId) {
-  ['login-page','dashboard-page','lost-found-page','buy-sell-page','profile-page'].forEach(id => {
+  ['login-page','dashboard-page','lost-found-page','buy-sell-page','profile-page','chat-page'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
   const page = document.getElementById(pageId);
@@ -52,6 +63,29 @@ function showPage(pageId) {
   if (pageId === 'lost-found-page') loadLostFound();
   if (pageId === 'buy-sell-page') loadMarketplace();
   if (pageId === 'profile-page') loadProfile();
+  
+  if (pageId === 'chat-page') {
+    loadConversations();
+  } else {
+    // Stop polling if we leave chat page
+    if (chatPollInterval) clearInterval(chatPollInterval);
+  }
+}
+
+// ===== THEME =====
+function toggleTheme() {
+  const root = document.documentElement;
+  const isDark = root.getAttribute('data-theme') === 'dark';
+  const newTheme = isDark ? 'light' : 'dark';
+  const newText = isDark ? '🌙 Dark' : '☀️ Light';
+  
+  if (isDark) root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', 'dark');
+  
+  localStorage.setItem('theme', newTheme);
+  
+  const btns = document.querySelectorAll('.theme-toggle-btn');
+  btns.forEach(b => b.innerHTML = newText);
 }
 
 // ===== AUTH =====
@@ -238,16 +272,20 @@ async function loadLostFound() {
       return;
     }
     list.innerHTML = posts.map((p, i) => {
+      const isOwn = p.user_id === currentStudentId;
       const badgeClass = p.type === 'Lost' ? 'badge-lost' : 'badge-found';
       const prefix = p.type === 'Lost' ? 'Lost near' : 'Found near';
       const imgBtn = p.image_path ? `<button type="button" class="view-img-btn" onclick="viewImage('${p.image_path}')">🖼️ View Image</button>` : '';
-      const delBtn = p.user_id === currentStudentId ? `<button type="button" class="delete-own" onclick="deletePost('lost-found',${p.id})">🗑️ Delete</button>` : '';
+      const delBtn = isOwn ? `<button type="button" class="delete-own" onclick="deletePost('lost-found',${p.id})">🗑️ Delete Post</button>` : '';
+      const msgBtn = !isOwn ? `<button type="button" class="action-btn" style="padding:6px 12px; margin-top:8px; font-size:12px; display:block;" onclick="openChat('${p.user_id}')">💬 Message Student</button>` : '';
+
       return `<div class="item-card" style="animation-delay:${i * 0.06}s">
         <span class="badge ${badgeClass}">${p.type}</span>
         <h4>${esc(p.item_name)}</h4>
         <p class="location-text">📍 ${prefix}: ${esc(p.location)}</p>
         <p>${esc(p.details)}</p>
         ${imgBtn}
+        ${msgBtn}
         <p class="timestamp">🕐 ${timeAgo(p.created_at)} • by ${esc(formatName(p.user_id))}</p>
         ${delBtn}
       </div>`;
@@ -310,16 +348,19 @@ async function loadMarketplace() {
       return;
     }
     list.innerHTML = listings.map((p, i) => {
+      const isOwn = p.user_id === currentStudentId;
       const badgeClass = p.type === 'Selling' ? 'badge-selling' : 'badge-buying';
       const imgBtn = p.image_path ? `<button type="button" class="view-img-btn" onclick="viewImage('${p.image_path}')">🖼️ View Image</button>` : '';
-      const delBtn = p.user_id === currentStudentId ? `<button type="button" class="delete-own" onclick="deletePost('marketplace',${p.id})">🗑️ Delete</button>` : '';
+      const delBtn = isOwn ? `<button type="button" class="delete-own" onclick="deletePost('marketplace',${p.id})">🗑️ Delete Post</button>` : '';
+      const msgBtn = !isOwn ? `<button type="button" class="action-btn" style="padding:6px 12px; margin-top:8px; font-size:12px; display:block;" onclick="openChat('${p.user_id}')">💬 Message Seller</button>` : '';
+
       return `<div class="item-card" style="animation-delay:${i * 0.06}s">
         <span class="badge ${badgeClass}">${p.type}</span>
         <h4>${esc(p.product_name)}</h4>
-        <p class="location-text">💰 Price/Budget: ${esc(p.price)}</p>
+        <p class="location-text">💰 Price: ${esc(p.price)}</p>
         <p><strong>Condition:</strong> ${esc(p.condition)}</p>
-        <p><strong>Contact:</strong> ${esc(p.contact)}</p>
         ${imgBtn}
+        ${msgBtn}
         <p class="timestamp">🕐 ${timeAgo(p.created_at)} • by ${esc(formatName(p.user_id))}</p>
         ${delBtn}
       </div>`;
@@ -333,13 +374,19 @@ async function handleMarketPost(event) {
   event.preventDefault();
   const form = event.target;
   const btn = form.querySelector('button[type="submit"]');
-  const type = form.elements[0].value;
-  const product_name = form.elements[1].value;
-  const condition = form.elements[2].value;
-  const price = form.elements[3].value;
-  const contact = form.elements[4].value;
 
-  if (!type || !product_name || !condition || !price || !contact) return showToast('Please fill all fields.', 'error');
+  const formData = new FormData();
+  formData.append('type', form[0].value);
+  formData.append('product_name', form[1].value);
+  formData.append('condition', form[2].value);
+  formData.append('price', form[3].value);
+
+  const type = form[0].value;
+  const product_name = form[1].value;
+  const condition = form[2].value;
+  const price = form[3].value;
+
+  if (!type || !product_name || !condition || !price) return showToast('Please fill all fields.', 'error');
 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Publishing...';
@@ -392,6 +439,113 @@ async function deletePost(endpoint, id, fromProfile = false) {
     }
   } catch (err) {
     showToast(err.message, 'error');
+  }
+}
+
+// ===== CHAT =====
+function openChat(userId) {
+  currentChatUser = userId;
+  showPage('chat-page');
+  loadConversations();
+  loadChatMessages(userId);
+}
+
+async function loadConversations() {
+  const list = document.getElementById('chat-sidebar-list');
+  try {
+    const res = await fetch(`${API}/api/messages/conversations`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+    const data = await res.json();
+    
+    // If we just clicked 'Message' on a new user not in our conversations yet, add them manually to the top
+    if (currentChatUser && !data.includes(currentChatUser)) {
+      data.unshift(currentChatUser);
+    }
+
+    if (data.length === 0) {
+      list.innerHTML = '<div style="padding:16px; color:var(--text-muted); font-size:14px; text-align:center;">No conversations yet.</div>';
+      return;
+    }
+
+    list.innerHTML = data.map(userId => `
+      <div class="chat-contact ${userId === currentChatUser ? 'active' : ''}" onclick="loadChatMessages('${userId}')">
+        <strong>${esc(formatName(userId))}</strong>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function loadChatMessages(otherUser) {
+  currentChatUser = otherUser;
+  document.getElementById('chat-header').textContent = `Chat with ${formatName(otherUser)}`;
+  document.getElementById('chat-input').disabled = false;
+  document.getElementById('chat-send-btn').disabled = false;
+  
+  // Highlight sidebar
+  document.querySelectorAll('.chat-contact').forEach(el => el.classList.remove('active'));
+  loadConversations(); // re-render sidebar to apply active class
+
+  if (chatPollInterval) clearInterval(chatPollInterval);
+  
+  await fetchMessages();
+  chatPollInterval = setInterval(fetchMessages, 3000); // Poll every 3 seconds
+}
+
+async function fetchMessages() {
+  if (!currentChatUser) return;
+  const container = document.getElementById('chat-messages');
+  // Simple hack to detect if user scrolled up, to avoid forcing them down
+  const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+
+  try {
+    const res = await fetch(`${API}/api/messages/${currentChatUser}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+    const messages = await res.json();
+
+    if (messages.length === 0) {
+      container.innerHTML = '<div style="margin:auto; color:var(--text-muted); font-size:14px;">No messages yet. Say hi!</div>';
+      return;
+    }
+
+    container.innerHTML = messages.map(m => {
+      const isSent = m.sender_id === currentStudentId;
+      return `<div class="msg-bubble ${isSent ? 'sent' : 'received'}">${esc(m.content)}</div>`;
+    }).join('');
+
+    if (isAtBottom) {
+      container.scrollTop = container.scrollHeight;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function handleSendMessage(event) {
+  event.preventDefault();
+  const input = document.getElementById('chat-input');
+  const content = input.value.trim();
+  if (!content || !currentChatUser) return;
+
+  input.value = '';
+  // Optimistic UI update
+  const container = document.getElementById('chat-messages');
+  if (container.querySelector('.msg-bubble') === null) container.innerHTML = '';
+  container.innerHTML += `<div class="msg-bubble sent">${esc(content)}</div>`;
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    const res = await fetch(`${API}/api/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ receiver_id: currentChatUser, content })
+    });
+    if (!res.ok) throw new Error('Failed to send');
+    // We don't need to refetch immediately because polling handles it
+  } catch (err) {
+    showToast('Failed to send message.', 'error');
   }
 }
 
