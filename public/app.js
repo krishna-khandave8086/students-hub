@@ -355,12 +355,6 @@ async function handleMarketPost(event) {
   const form = event.target;
   const btn = form.querySelector('button[type="submit"]');
 
-  const formData = new FormData();
-  formData.append('type', form[0].value);
-  formData.append('product_name', form[1].value);
-  formData.append('condition', form[2].value);
-  formData.append('price', form[3].value);
-
   const type = form[0].value;
   const product_name = form[1].value;
   const condition = form[2].value;
@@ -376,7 +370,6 @@ async function handleMarketPost(event) {
   formData.append('product_name', product_name);
   formData.append('condition', condition);
   formData.append('price', price);
-  formData.append('contact', contact);
   if (capturedImageBlob) formData.append('image', capturedImageBlob, 'capture.png');
 
   try {
