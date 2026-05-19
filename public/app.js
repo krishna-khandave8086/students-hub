@@ -254,13 +254,16 @@ async function loadLostFound() {
     }
     list.innerHTML = posts.map((p, i) => {
       const isOwn = p.user_id === currentStudentId;
+      const isResolved = p.status === 'resolved';
       const badgeClass = p.type === 'Lost' ? 'badge-lost' : 'badge-found';
       const prefix = p.type === 'Lost' ? 'Lost near' : 'Found near';
       const imgBtn = p.image_path ? `<button type="button" class="view-img-btn" onclick="viewImage('${p.image_path}')">🖼️ View Image</button>` : '';
-      const delBtn = isOwn ? `<button type="button" class="delete-own" onclick="deletePost('lost-found',${p.id})">🗑️ Delete Post</button>` : '';
-      const msgBtn = !isOwn ? `<button type="button" class="action-btn" style="padding:6px 12px; margin-top:8px; font-size:12px; display:block;" onclick="openChat('${p.user_id}')">💬 Message Student</button>` : '';
+      const delBtn = isOwn ? `<button type="button" class="delete-own" onclick="deletePost('lost-found',${p.id})">🗑️ Delete</button>` : '';
+      const resolveBtn = (isOwn && !isResolved) ? `<button type="button" class="action-btn" style="background:#10b981;border-color:#10b981;margin-left:8px;" onclick="updatePostStatus('lost-found', ${p.id}, 'resolved')">✅ Mark Found</button>` : '';
+      const msgBtn = (!isOwn && !isResolved) ? `<button type="button" class="action-btn" style="padding:6px 12px; margin-top:8px; font-size:12px; display:block;" onclick="openChat('${p.user_id}')">💬 Message Student</button>` : '';
 
-      return `<div class="item-card" style="animation-delay:${i * 0.06}s">
+      return `<div class="item-card ${isResolved ? 'item-resolved' : ''}" style="animation-delay:${i * 0.06}s">
+        ${isResolved ? '<div class="resolved-banner">RESOLVED</div>' : ''}
         <span class="badge ${badgeClass}">${p.type}</span>
         <h4>${esc(p.item_name)}</h4>
         <p class="location-text">📍 ${prefix}: ${esc(p.location)}</p>
@@ -268,7 +271,7 @@ async function loadLostFound() {
         ${imgBtn}
         ${msgBtn}
         <p class="timestamp">🕐 ${timeAgo(p.created_at)} • by ${esc(formatName(p.user_id))}</p>
-        ${delBtn}
+        <div style="margin-top:10px">${delBtn}${resolveBtn}</div>
       </div>`;
     }).join('');
   } catch (e) {
@@ -330,12 +333,15 @@ async function loadMarketplace() {
     }
     list.innerHTML = listings.map((p, i) => {
       const isOwn = p.user_id === currentStudentId;
+      const isSold = p.status === 'sold';
       const badgeClass = p.type === 'Selling' ? 'badge-selling' : 'badge-buying';
       const imgBtn = p.image_path ? `<button type="button" class="view-img-btn" onclick="viewImage('${p.image_path}')">🖼️ View Image</button>` : '';
-      const delBtn = isOwn ? `<button type="button" class="delete-own" onclick="deletePost('marketplace',${p.id})">🗑️ Delete Post</button>` : '';
-      const msgBtn = !isOwn ? `<button type="button" class="action-btn" style="padding:6px 12px; margin-top:8px; font-size:12px; display:block;" onclick="openChat('${p.user_id}')">💬 Message Seller</button>` : '';
+      const delBtn = isOwn ? `<button type="button" class="delete-own" onclick="deletePost('marketplace',${p.id})">🗑️ Delete</button>` : '';
+      const resolveBtn = (isOwn && !isSold) ? `<button type="button" class="action-btn" style="background:#10b981;border-color:#10b981;margin-left:8px;" onclick="updatePostStatus('marketplace', ${p.id}, 'sold')">✅ Mark Sold</button>` : '';
+      const msgBtn = (!isOwn && !isSold) ? `<button type="button" class="action-btn" style="padding:6px 12px; margin-top:8px; font-size:12px; display:block;" onclick="openChat('${p.user_id}')">💬 Message Seller</button>` : '';
 
-      return `<div class="item-card" style="animation-delay:${i * 0.06}s">
+      return `<div class="item-card ${isSold ? 'item-resolved' : ''}" style="animation-delay:${i * 0.06}s">
+        ${isSold ? '<div class="resolved-banner">SOLD</div>' : ''}
         <span class="badge ${badgeClass}">${p.type}</span>
         <h4>${esc(p.product_name)}</h4>
         <p class="location-text">💰 Price: ${esc(p.price)}</p>
@@ -343,7 +349,7 @@ async function loadMarketplace() {
         ${imgBtn}
         ${msgBtn}
         <p class="timestamp">🕐 ${timeAgo(p.created_at)} • by ${esc(formatName(p.user_id))}</p>
-        ${delBtn}
+        <div style="margin-top:10px">${delBtn}${resolveBtn}</div>
       </div>`;
     }).join('');
   } catch (e) {
@@ -402,15 +408,31 @@ async function deletePost(endpoint, id, fromProfile = false) {
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast('Deleted successfully.', 'success');
-    
-    if (fromProfile) {
-      loadProfile();
-    } else {
-      if (endpoint === 'lost-found') loadLostFound();
-      else loadMarketplace();
-    }
+    if (!res.ok) throw new Error('Failed to delete post');
+    showToast('Post deleted successfully', 'success');
+    loadLostFound();
+    loadMarketplace();
+    if (document.getElementById('profile-page').classList.contains('hidden') === false) loadProfile();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function updatePostStatus(source, id, newStatus) {
+  try {
+    const res = await fetch(`${API}/api/${source}/${id}/status`, {
+      method: 'PUT',
+      headers: { 
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) throw new Error('Failed to update status');
+    showToast('Status updated successfully', 'success');
+    loadLostFound();
+    loadMarketplace();
+    if (!document.getElementById('profile-page').classList.contains('hidden')) loadProfile();
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -582,14 +604,23 @@ async function loadAdminPosts() {
     container.innerHTML = allPosts.map(p => {
       const typeLabel = p.source === 'lost-found' ? `LF: ${p.type}` : `MP: ${p.type}`;
       const title = p.source === 'lost-found' ? p.item_name : p.product_name;
+      const isResolved = p.status === 'resolved' || p.status === 'sold';
+      
+      const resolveText = p.source === 'lost-found' ? '✅ Mark Found' : '✅ Mark Sold';
+      const resolveStatus = p.source === 'lost-found' ? 'resolved' : 'sold';
+      const resolveBtn = !isResolved ? `<button type="button" class="action-btn" style="background:#10b981;border-color:#10b981;margin:0" onclick="adminUpdatePostStatus('${p.source}', ${p.id}, '${resolveStatus}')">${resolveText}</button>` : `<span style="font-size:12px; font-weight:bold; color:var(--text-muted);">${p.status.toUpperCase()}</span>`;
+
       return `
-        <div class="item-card" style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="item-card ${isResolved ? 'item-resolved' : ''}" style="display:flex; justify-content:space-between; align-items:center;">
           <div>
             <span class="badge ${p.source === 'lost-found' ? 'badge-lost' : 'badge-selling'}">${typeLabel}</span>
             <h4 style="margin:10px 0 0 0">${esc(title)}</h4>
             <p class="timestamp" style="margin:0">by ${p.user_id}</p>
           </div>
-          <button type="button" class="btn-danger" style="margin:0" onclick="adminDeletePost('${p.source}', ${p.id})">🚨 Force Delete</button>
+          <div style="display:flex; gap:8px; align-items:center;">
+            ${resolveBtn}
+            <button type="button" class="btn-danger" style="margin:0; pointer-events:auto;" onclick="adminDeletePost('${p.source}', ${p.id})">🚨 Force Delete</button>
+          </div>
         </div>
       `;
     }).join('');
@@ -607,6 +638,25 @@ async function adminDeletePost(source, id) {
     });
     if (!res.ok) throw new Error('Failed to delete post');
     showToast(`Post deleted.`, 'success');
+    loadAdminPosts();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function adminUpdatePostStatus(source, id, newStatus) {
+  if (!confirm(`Are you sure you want to mark this post as ${newStatus}?`)) return;
+  try {
+    const res = await fetch(`${API}/api/admin/posts/${source}/${id}/status`, {
+      method: 'PUT',
+      headers: { 
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) throw new Error('Failed to update post status');
+    showToast(`Post marked as ${newStatus}.`, 'success');
     loadAdminPosts();
   } catch (err) {
     showToast(err.message, 'error');

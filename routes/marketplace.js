@@ -145,4 +145,39 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/marketplace/:id/status — Update status (auth required)
+router.put('/:id/status', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!['active', 'sold'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status.' });
+  }
+
+  try {
+    const { data: post, error: fetchError } = await supabase
+      .from('marketplace')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !post) return res.status(404).json({ error: 'Post not found.' });
+
+    if (post.user_id !== req.user.student_id) {
+      return res.status(403).json({ error: 'You can only update your own posts.' });
+    }
+
+    const { error: updateError } = await supabase
+      .from('marketplace')
+      .update({ status })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+    res.json({ message: 'Status updated successfully.' });
+  } catch (err) {
+    console.error('Update Status Error:', err);
+    res.status(500).json({ error: 'Failed to update status.' });
+  }
+});
+
 module.exports = router;

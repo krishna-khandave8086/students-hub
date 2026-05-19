@@ -90,4 +90,24 @@ router.delete('/posts/:type/:id', async (req, res) => {
   }
 });
 
+// PUT /api/admin/posts/:type/:id/status — Force update status
+router.put('/posts/:type/:id/status', async (req, res) => {
+  const { type, id } = req.params;
+  const { status } = req.body;
+  const table = type === 'lost-found' ? 'lost_found' : 'marketplace';
+
+  try {
+    const { error: updateError } = await supabase
+      .from(table)
+      .update({ status })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+    res.json({ message: `Post status forcefully updated to ${status}.` });
+  } catch (err) {
+    console.error('Admin Update Post Status Error:', err);
+    res.status(500).json({ error: 'Failed to update post status.' });
+  }
+});
+
 module.exports = router;
