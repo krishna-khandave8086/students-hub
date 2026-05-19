@@ -10,15 +10,6 @@ let chatPollInterval = null;
 
 const API = '';
 
-// Initialize Theme
-if (localStorage.getItem('theme') === 'dark') {
-  document.documentElement.setAttribute('data-theme', 'dark');
-  setTimeout(() => {
-    const btns = document.querySelectorAll('.theme-toggle-btn');
-    btns.forEach(b => b.innerHTML = '☀️ Light');
-  }, 100);
-}
-
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', () => {
   if (authToken && currentStudentId) {
@@ -70,22 +61,6 @@ function showPage(pageId) {
     // Stop polling if we leave chat page
     if (chatPollInterval) clearInterval(chatPollInterval);
   }
-}
-
-// ===== THEME =====
-function toggleTheme() {
-  const root = document.documentElement;
-  const isDark = root.getAttribute('data-theme') === 'dark';
-  const newTheme = isDark ? 'light' : 'dark';
-  const newText = isDark ? '🌙 Dark' : '☀️ Light';
-  
-  if (isDark) root.removeAttribute('data-theme');
-  else root.setAttribute('data-theme', 'dark');
-  
-  localStorage.setItem('theme', newTheme);
-  
-  const btns = document.querySelectorAll('.theme-toggle-btn');
-  btns.forEach(b => b.innerHTML = newText);
 }
 
 // ===== AUTH =====

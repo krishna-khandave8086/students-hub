@@ -23,24 +23,6 @@
   --radius-sm: 12px;
 }
 
-:root[data-theme="dark"] {
-  --primary: #818cf8;
-  --primary-dark: #6366f1;
-  --primary-light: #4f46e5;
-  --primary-glow: rgba(129,140,248,0.15);
-  --accent: #fbbf24;
-  --secondary: #34d399;
-  --dark: #f8fafc;
-  --text: #e2e8f0;
-  --text-muted: #94a3b8;
-  --text-heading: #f8fafc;
-  --card-bg: #1e293b;
-  --input-bg: #0f172a;
-  --input-border: #334155;
-  --body-bg: #0f172a;
-  --glass-border: #334155;
-}
-
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 body {
@@ -273,8 +255,6 @@ video{width:100%;border-radius:var(--radius-sm);background:#000;margin-bottom:16
 .chat-input-area { padding: 16px; border-top: 1px solid var(--glass-border); background: var(--card-bg); display: flex; gap: 10px; }
 .chat-input-area input { margin: 0; flex: 1; }
 .chat-input-area button { width: auto; padding: 14px 20px; }
-.theme-toggle-btn { background: transparent; color: var(--text); border: 1px solid var(--glass-border); padding: 8px 12px; border-radius: 20px; font-size: 14px; cursor: pointer; width: auto; box-shadow: none; display: flex; align-items: center; gap: 6px; }
-.theme-toggle-btn:hover { background: var(--input-bg); transform: none; box-shadow: none; }
 
 /* Responsive */
 @media(max-width:640px){
