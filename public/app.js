@@ -9,6 +9,7 @@ let currentChatUser = null;
 let chatPollInterval = null;
 
 const ADMIN_EMAIL = 'krishnakant.khandave_comp25@pccoer.in';
+const API = '';
 
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', () => {
