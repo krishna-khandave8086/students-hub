@@ -86,7 +86,7 @@ h3{font-family:'Outfit',sans-serif;font-weight:600;font-size:20px;color:var(--te
 p{line-height:1.6}
 
 /* Inputs */
-input[type="text"],input[type="password"],select,textarea {
+input[type="text"],input[type="email"],input[type="password"],select,textarea {
   width:100%;padding:14px 16px;margin:6px 0 16px;
   background:var(--input-bg);border:2px solid var(--input-border);
   border-radius:var(--radius-sm);color:var(--text);font-size:15px;font-family:inherit;

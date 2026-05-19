@@ -12,7 +12,7 @@ const API = '';
 window.addEventListener('DOMContentLoaded', () => {
   if (authToken && currentStudentId) {
     currentUser = currentStudentId;
-    document.getElementById('welcome-msg').innerText = `Welcome, ${currentUser}`;
+    document.getElementById('welcome-msg').innerText = `Welcome, ${formatName(currentUser)}`;
     showPage('dashboard-page');
   } else {
     showPage('login-page');
@@ -94,7 +94,7 @@ async function handleAuth(event) {
     localStorage.setItem('authToken', authToken);
     localStorage.setItem('studentId', currentStudentId);
 
-    document.getElementById('welcome-msg').innerText = `Welcome, ${currentUser}`;
+    document.getElementById('welcome-msg').innerText = `Welcome, ${formatName(currentUser)}`;
     showPage('dashboard-page');
     showToast(data.message, 'success');
   } catch (err) {
@@ -120,7 +120,8 @@ function logout() {
 
 // ===== PROFILE PAGE =====
 async function loadProfile() {
-  document.getElementById('profile-email').textContent = currentStudentId;
+  const formattedName = formatName(currentStudentId);
+  document.getElementById('profile-email').textContent = `${formattedName} (${currentStudentId})`;
   const list = document.getElementById('profile-posts-list');
   list.innerHTML = '<div class="empty-state"><div class="spinner"></div><p>Loading your posts...</p></div>';
 
@@ -247,7 +248,7 @@ async function loadLostFound() {
         <p class="location-text">📍 ${prefix}: ${esc(p.location)}</p>
         <p>${esc(p.details)}</p>
         ${imgBtn}
-        <p class="timestamp">🕐 ${timeAgo(p.created_at)} • by ${esc(p.user_id)}</p>
+        <p class="timestamp">🕐 ${timeAgo(p.created_at)} • by ${esc(formatName(p.user_id))}</p>
         ${delBtn}
       </div>`;
     }).join('');
@@ -319,7 +320,7 @@ async function loadMarketplace() {
         <p><strong>Condition:</strong> ${esc(p.condition)}</p>
         <p><strong>Contact:</strong> ${esc(p.contact)}</p>
         ${imgBtn}
-        <p class="timestamp">🕐 ${timeAgo(p.created_at)} • by ${esc(p.user_id)}</p>
+        <p class="timestamp">🕐 ${timeAgo(p.created_at)} • by ${esc(formatName(p.user_id))}</p>
         ${delBtn}
       </div>`;
     }).join('');
@@ -502,4 +503,19 @@ function esc(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+function formatName(email) {
+  if (!email || !email.includes('@')) return email;
+  const localPart = email.split('@')[0];
+  
+  // Try to match format: firstname.lastname_something
+  const match = localPart.match(/^([a-zA-Z]+)\.([a-zA-Z]+)(_.*)?$/);
+  if (match) {
+    const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    return `${capitalize(match[1])} ${capitalize(match[2])}`;
+  }
+  
+  // Fallback: just capitalize the part before the @
+  return localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase();
 }
