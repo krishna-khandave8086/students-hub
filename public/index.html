@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Students Hub - Campus Lost & Found and Student Marketplace portal">
+    <title>Students Hub — Campus Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="bg-animation"></div>
+
+<div class="container">
+
+    <!-- ===== LOGIN / REGISTER ===== -->
+    <div id="login-page" class="card">
+        <div class="login-logo">🏛️</div>
+        <h2 id="auth-title">Students Hub</h2>
+        <p style="color:var(--text-muted);margin:8px 0 30px" id="auth-subtitle">Sign in with your student credentials</p>
+        <form id="auth-form" data-mode="login" onsubmit="handleAuth(event)">
+            <input type="text" id="college-id" placeholder="Student ID (e.g., PCCOER123)" required>
+            <input type="password" id="auth-password" placeholder="Password" required>
+            <button type="submit" id="auth-submit-btn">Login</button>
+        </form>
+        <div id="auth-toggle" class="auth-toggle">
+            New student? <a onclick="toggleAuth('register')">Create Account</a>
+        </div>
+    </div>
+
+    <!-- ===== DASHBOARD ===== -->
+    <div id="dashboard-page" class="card wide hidden">
+        <div class="dash-header">
+            <div>
+                <h2 id="welcome-msg">Welcome back</h2>
+            </div>
+            <div class="user-avatar">👨‍🎓</div>
+        </div>
+
+
+
+        <div class="grid">
+            <div class="feature-box" onclick="showPage('lost-found-page')">
+                <div class="feature-icon">🔍</div>
+                <h3>Lost & Found</h3>
+                <p>Report missing items or help fellow students locate things found on campus.</p>
+            </div>
+            <div class="feature-box" onclick="showPage('buy-sell-page')">
+                <div class="feature-icon">🛍️</div>
+                <h3>Buy & Sell</h3>
+                <p>Find affordable textbooks, drafting tools, and campus gear from seniors.</p>
+            </div>
+        </div>
+
+        <div style="text-align:right;margin-top:30px">
+            <button class="btn-secondary" style="width:auto;padding:10px 24px" onclick="logout()">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- ===== LOST & FOUND ===== -->
+    <div id="lost-found-page" class="card wide hidden">
+        <h2>🔍 Campus Lost & Found</h2>
+
+        <div style="text-align:left;margin-top:30px">
+            <h3>📋 Active Reports</h3>
+            <p style="font-size:14px;color:var(--text-muted);margin-top:-8px">Browse recently reported items before submitting a new report.</p>
+            <div id="lost-list" class="items-grid">
+                <div class="empty-state"><div class="empty-icon">📭</div><p>No reports yet.</p></div>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="form-container">
+            <h3 style="margin-top:0">➕ Submit a New Report</h3>
+            <form onsubmit="handleLostFoundPost(event)">
+                <select id="report-type" required onchange="updateLocationPlaceholder()">
+                    <option value="">-- Select Report Type --</option>
+                    <option value="Lost">I Lost Something</option>
+                    <option value="Found">I Found Something</option>
+                </select>
+                <input type="text" placeholder="Item Name (e.g., Car Keys, Lab Manual)" required>
+                <input type="text" id="location-input" placeholder="Where was it lost/found?" required>
+                <textarea placeholder="Provide details like color, brand, or location last seen..." rows="3" required></textarea>
+
+                <label id="photo-label" class="file-label">Provide a Photo of the Item (Optional):</label>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <button type="button" class="action-btn" onclick="openCamera('lost')">📷 Capture Image</button>
+                    <button type="button" class="action-btn" onclick="triggerFilePicker('lost')">📁 Upload File</button>
+                </div>
+
+                <div id="captured-preview-container" class="captured-preview-container hidden">
+                    <strong style="color:var(--text-muted);font-size:13px">Image Preview:</strong>
+                    <img id="captured-preview" class="item-image" src="" alt="Captured item">
+                    <button type="button" class="btn-danger" onclick="clearCapturedPhoto('lost')">Discard Photo</button>
+                </div>
+
+                <button type="submit" style="margin-top:12px">Post Report</button>
+            </form>
+        </div>
+
+        <button class="btn-secondary" style="margin-top:25px" onclick="showPage('dashboard-page')">← Back to Portal Home</button>
+    </div>
+
+    <!-- ===== BUY & SELL ===== -->
+    <div id="buy-sell-page" class="card wide hidden">
+        <h2>🛍️ Student Marketplace</h2>
+
+        <div style="text-align:left;margin-top:30px">
+            <h3>🏷️ Active Listings</h3>
+            <p style="font-size:14px;color:var(--text-muted);margin-top:-8px">Find what you need or see what others are selling.</p>
+            <div id="market-list" class="items-grid">
+                <div class="empty-state"><div class="empty-icon">🏪</div><p>No listings yet.</p></div>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="form-container">
+            <h3 style="margin-top:0">➕ Create a Listing</h3>
+            <form onsubmit="handleMarketPost(event)">
+                <select required>
+                    <option value="">-- Select Listing Type --</option>
+                    <option value="Selling">I am Selling</option>
+                    <option value="Buying">I am Looking to Buy</option>
+                </select>
+                <input type="text" placeholder="Product Name (e.g., Engineering Drafter, Calculator)" required>
+                <select required>
+                    <option value="">-- Select Condition --</option>
+                    <option value="Brand New">Brand New</option>
+                    <option value="Lightly Used">Lightly Used</option>
+                    <option value="Heavily Used">Heavily Used</option>
+                    <option value="Not Applicable">Not Applicable</option>
+                </select>
+                <input type="text" placeholder="Asking Price / Budget (e.g., ₹200 or Negotiable)" required>
+                <input type="text" placeholder="Contact Info (e.g., Phone No, Email, Hostel Room)" required>
+
+                <label class="file-label">Provide a Photo of the Item (Optional):</label>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <button type="button" class="action-btn" onclick="openCamera('market')">📷 Capture Image</button>
+                    <button type="button" class="action-btn" onclick="triggerFilePicker('market')">📁 Upload File</button>
+                </div>
+
+                <div id="market-preview-container" class="captured-preview-container hidden">
+                    <strong style="color:var(--text-muted);font-size:13px">Image Preview:</strong>
+                    <img id="market-preview" class="item-image" src="" alt="Captured item">
+                    <button type="button" class="btn-danger" onclick="clearCapturedPhoto('market')">Discard Photo</button>
+                </div>
+
+                <button type="submit" style="margin-top:12px">Publish Listing</button>
+            </form>
+        </div>
+
+        <button class="btn-secondary" style="margin-top:25px" onclick="showPage('dashboard-page')">← Back to Portal Home</button>
+    </div>
+
+</div>
+
+<!-- Camera Modal -->
+<div id="camera-modal" class="modal-overlay hidden">
+    <div class="camera-box">
+        <h3 style="margin-top:0">Take a Photo</h3>
+        <video id="camera-feed" autoplay playsinline></video>
+        <canvas id="camera-canvas" class="hidden"></canvas>
+        <button type="button" onclick="capturePhoto()">📸 Snap Picture</button>
+        <button type="button" class="btn-secondary" style="margin-top:10px" onclick="closeCamera()">Cancel</button>
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div id="image-viewer-modal" class="modal-overlay hidden" onclick="closeImageViewer()">
+    <div class="viewer-box" onclick="event.stopPropagation()">
+        <img id="viewer-img" src="" alt="Full size item image">
+        <div style="margin-top:15px">
+            <button type="button" class="btn-danger" onclick="closeImageViewer()">Close Image</button>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

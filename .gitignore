@@ -1,0 +1,4 @@
+node_modules/
+students_hub.db
+uploads/
+.env
