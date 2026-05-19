@@ -36,6 +36,23 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/lost-found/user — Fetch posts by logged in user
+router.get('/user', authenticateToken, async (req, res) => {
+  try {
+    const { data: posts, error } = await supabase
+      .from('lost_found')
+      .select('*')
+      .eq('user_id', req.user.student_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(posts);
+  } catch (err) {
+    console.error('Fetch User LF Error:', err);
+    res.status(500).json({ error: 'Failed to fetch your posts.' });
+  }
+});
+
 // POST /api/lost-found — Create new post (auth required)
 router.post('/', authenticateToken, upload.single('image'), async (req, res) => {
   const { type, item_name, location, details } = req.body;

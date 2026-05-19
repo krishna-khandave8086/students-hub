@@ -40,7 +40,7 @@ function showToast(message, type = 'info') {
 
 // ===== PAGE NAV =====
 function showPage(pageId) {
-  ['login-page','dashboard-page','lost-found-page','buy-sell-page'].forEach(id => {
+  ['login-page','dashboard-page','lost-found-page','buy-sell-page','profile-page'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
   const page = document.getElementById(pageId);
@@ -51,13 +51,14 @@ function showPage(pageId) {
 
   if (pageId === 'lost-found-page') loadLostFound();
   if (pageId === 'buy-sell-page') loadMarketplace();
+  if (pageId === 'profile-page') loadProfile();
 }
 
 // ===== AUTH =====
 function toggleAuth(mode) {
   const isRegister = mode === 'register';
   document.getElementById('auth-title').textContent = isRegister ? 'Create Account' : 'Students Hub';
-  document.getElementById('auth-subtitle').textContent = isRegister ? 'Register with your student ID' : 'Sign in with your student credentials';
+  document.getElementById('auth-subtitle').textContent = isRegister ? 'Register with your college email' : 'Sign in with your student credentials';
   document.getElementById('auth-submit-btn').textContent = isRegister ? 'Create Account' : 'Login';
   document.getElementById('auth-form').dataset.mode = mode;
   document.getElementById('auth-toggle').innerHTML = isRegister
@@ -115,6 +116,101 @@ function logout() {
   toggleAuth('login');
   showPage('login-page');
   showToast('Signed out successfully.', 'info');
+}
+
+// ===== PROFILE PAGE =====
+async function loadProfile() {
+  document.getElementById('profile-email').textContent = currentStudentId;
+  const list = document.getElementById('profile-posts-list');
+  list.innerHTML = '<div class="empty-state"><div class="spinner"></div><p>Loading your posts...</p></div>';
+
+  try {
+    const [lfRes, mpRes] = await Promise.all([
+      fetch(`${API}/api/lost-found/user`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+      fetch(`${API}/api/marketplace/user`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+    ]);
+    const lfData = await lfRes.json();
+    const mpData = await mpRes.json();
+
+    const allPosts = [];
+    lfData.forEach(p => allPosts.push({ ...p, source: 'lost-found' }));
+    mpData.forEach(p => allPosts.push({ ...p, source: 'marketplace' }));
+
+    allPosts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    if (allPosts.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>You have no active posts.</p></div>';
+      return;
+    }
+
+    list.innerHTML = allPosts.map((p, i) => {
+      let badgeClass, title, detailsHtml;
+      
+      if (p.source === 'lost-found') {
+        badgeClass = p.type === 'Lost' ? 'badge-lost' : 'badge-found';
+        title = esc(p.item_name);
+        detailsHtml = `
+          <p class="location-text">📍 Location: ${esc(p.location)}</p>
+          <p>${esc(p.details)}</p>
+        `;
+      } else {
+        badgeClass = p.type === 'Selling' ? 'badge-selling' : 'badge-buying';
+        title = esc(p.product_name);
+        detailsHtml = `
+          <p class="location-text">💰 Price: ${esc(p.price)}</p>
+          <p><strong>Condition:</strong> ${esc(p.condition)}</p>
+        `;
+      }
+
+      const imgBtn = p.image_path ? `<button type="button" class="view-img-btn" onclick="viewImage('${p.image_path}')">🖼️ View Image</button>` : '';
+      const delBtn = `<button type="button" class="delete-own" onclick="deletePost('${p.source}',${p.id}, true)">🗑️ Delete Post</button>`;
+
+      return `<div class="item-card" style="animation-delay:${i * 0.06}s">
+        <span class="badge ${badgeClass}">${p.type}</span>
+        <h4>${title}</h4>
+        ${detailsHtml}
+        ${imgBtn}
+        <p class="timestamp">🕐 ${timeAgo(p.created_at)}</p>
+        ${delBtn}
+      </div>`;
+    }).join('');
+  } catch (err) {
+    list.innerHTML = '<div class="empty-state"><p>Failed to load profile posts.</p></div>';
+  }
+}
+
+async function handleChangePassword(event) {
+  event.preventDefault();
+  const currentPassword = document.getElementById('current-password').value;
+  const newPassword = document.getElementById('new-password').value;
+  const btn = event.target.querySelector('button[type="submit"]');
+
+  if (!currentPassword || !newPassword) return showToast('Please fill all fields.', 'error');
+  if (newPassword.length < 4) return showToast('New password must be at least 4 characters.', 'error');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Updating...';
+
+  try {
+    const res = await fetch(`${API}/api/auth/change-password`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    showToast(data.message, 'success');
+    event.target.reset();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Update Password';
+  }
 }
 
 // ===== TIME AGO =====
@@ -276,7 +372,7 @@ async function handleMarketPost(event) {
 }
 
 // ===== DELETE =====
-async function deletePost(endpoint, id) {
+async function deletePost(endpoint, id, fromProfile = false) {
   if (!confirm('Delete this post?')) return;
   try {
     const res = await fetch(`${API}/api/${endpoint}/${id}`, {
@@ -286,8 +382,13 @@ async function deletePost(endpoint, id) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     showToast('Deleted successfully.', 'success');
-    if (endpoint === 'lost-found') loadLostFound();
-    else loadMarketplace();
+    
+    if (fromProfile) {
+      loadProfile();
+    } else {
+      if (endpoint === 'lost-found') loadLostFound();
+      else loadMarketplace();
+    }
   } catch (err) {
     showToast(err.message, 'error');
   }

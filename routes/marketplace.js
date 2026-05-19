@@ -36,6 +36,23 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/marketplace/user — Fetch listings by logged in user
+router.get('/user', authenticateToken, async (req, res) => {
+  try {
+    const { data: listings, error } = await supabase
+      .from('marketplace')
+      .select('*')
+      .eq('user_id', req.user.student_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(listings);
+  } catch (err) {
+    console.error('Fetch User MP Error:', err);
+    res.status(500).json({ error: 'Failed to fetch your listings.' });
+  }
+});
+
 // POST /api/marketplace — Create new listing (auth required)
 router.post('/', authenticateToken, upload.single('image'), async (req, res) => {
   const { type, product_name, condition, price, contact } = req.body;

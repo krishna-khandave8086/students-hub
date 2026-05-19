@@ -11,7 +11,11 @@ router.post('/register', async (req, res) => {
   const { student_id, password } = req.body;
 
   if (!student_id || !password) {
-    return res.status(400).json({ error: 'Student ID and password are required.' });
+    return res.status(400).json({ error: 'College Email and password are required.' });
+  }
+
+  if (!student_id.endsWith('@pccoer.in')) {
+    return res.status(400).json({ error: 'Registration is restricted to official @pccoer.in emails only.' });
   }
 
   if (password.length < 4) {
@@ -87,6 +91,47 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login Error:', err);
     res.status(500).json({ error: 'Internal server error during login.' });
+  }
+});
+
+// PUT /api/auth/change-password
+router.put('/change-password', require('../middleware/auth').authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const student_id = req.user.student_id;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current and new passwords are required.' });
+  }
+  if (newPassword.length < 4) {
+    return res.status(400).json({ error: 'New password must be at least 4 characters.' });
+  }
+
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('*')
+      .eq('student_id', student_id)
+      .single();
+
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    const validPassword = bcrypt.compareSync(currentPassword, user.password_hash);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Incorrect current password.' });
+    }
+
+    const newHash = bcrypt.hashSync(newPassword, 10);
+    const { error } = await supabase
+      .from('users')
+      .update({ password_hash: newHash })
+      .eq('student_id', student_id);
+
+    if (error) throw error;
+
+    res.json({ message: 'Password updated successfully.' });
+  } catch (err) {
+    console.error('Change Password Error:', err);
+    res.status(500).json({ error: 'Failed to update password.' });
   }
 });
 
