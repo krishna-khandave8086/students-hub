@@ -93,6 +93,7 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
         product_name,
         condition,
         price,
+        contact: 'Use In-App Chat',
         image_path
       }])
       .select()
